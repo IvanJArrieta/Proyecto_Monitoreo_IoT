@@ -202,21 +202,21 @@ int main(void) {
 
 
 #if HABILITAR_SENSOR_SHT3X
-    	if(sht3x_detectado==1){
-    		sht3x_base_de_tiempo++; //incrementa base de tiempo para tomar dato sensor SHT3X
-			if(sht3x_base_de_tiempo>10){//	>10 equivale aproximadamente a 2s
-				sht3x_base_de_tiempo=0; //reinicia contador de tiempo
-	    		if (sht3xReadData(&sht3x_datos) == kStatus_Success) {//toma lectura humedad, temperatura
-	    			printf("SHT3X ->");
-	    			printf("temperatura:0x%X ",sht3x_datos.temperatura);	//imprime temperatura sin procesar
-	    			printf("CRC8_t:0x%X ",sht3x_datos.crc_temperatura);	//imprime CRC8 de temperatura
-        			printf("humedad:0x%X ",sht3x_datos.humedad);	//imprime humedad sin procesar
-        			printf("CRC8_h:0x%X ",sht3x_datos.crc_humedad);	//imprime CRC8 de temperatura
-        			printf("\r\n");	//Imprime cambio de linea
-	    		}
-			}
-    	}
+    	    	if(sht3x_detectado==1){
+    	    		sht3x_base_de_tiempo++; //incrementa base de tiempo para tomar dato sensor SHT3X
+    				if(sht3x_base_de_tiempo>10){//	>10 equivale aproximadamente a 2s
+    					sht3x_base_de_tiempo=0; //reinicia contador de tiempo
+    		    		if (sht3xReadData(&sht3x_datos) == kStatus_Success) {//toma lectura humedad, temperatura
+    		    			printf("SHT3X ->");
+    		    			printf("temperatura:       %.2f     ",(float)(-45.0+175.0*(sht3x_datos.temperatura/65535.0)));    //imprime temperatura
+    	        			printf("humedad:         %.2f  %%   ",(float)(100.0*(sht3x_datos.humedad/65535.0)));    //imprime humedad
+    	        			printf("\r\n");	//Imprime cambio de linea
+    		    		}
+    				}
+    	    	}
 #endif
+
+
 
 #if HABILITAR_MODEM_EC25
     	ec25_estado_actual = ec25Polling();	//actualiza maquina de estados encargada de avanzar en el proceso interno del MODEM
