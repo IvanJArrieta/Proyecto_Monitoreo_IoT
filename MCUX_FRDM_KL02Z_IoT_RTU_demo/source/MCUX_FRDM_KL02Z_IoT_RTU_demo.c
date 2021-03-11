@@ -201,49 +201,6 @@ int main(void) {
     	waytTime();		//base de tiempo fija aproximadamente 200ms
 
 
-#if HABILITAR_ENTRADA_ADC_PTB8
-    	adc_base_de_tiempo++;//incrementa base de tiempo para tomar una lectura ADC
-    	if(adc_base_de_tiempo>10){	// >10 equivale aproximadamente a 2s
-    		adc_base_de_tiempo=0;	//reinicia contador de tiempo
-    		adcTomarCaptura(PTB8_ADC0_SE11_CH14, &adc_dato);	//inicia lectura por ADC y guarda en variable adc_dato
-    		printf("ADC ->");
-    		printf("PTB8:0x%X ",adc_dato);	//imprime resultado ADC
-    		printf("\r\n");	//Imprime cambio de linea
-    	}
-#endif
-
-#if HABILITAR_SENSOR_MMA8451Q
-    	if(mma8451Q_detectado==1){	//Solo hace esto si preciamente fue detectado el acelerometro con el mma8451QWhoAmI();
-        	mma8451Q_base_de_tiempo++; //incrementa base de tiempo para tomar dato acelerometro
-        	if(mma8451Q_base_de_tiempo>10){	//	>10 equivale aproximadamente a 2s
-        		mma8451Q_base_de_tiempo=0;	//reinicia contador de tiempo
-        		if(mma8451QReadAccel(&mma8451Q_datos)==kStatus_Success){	//toma lectura de ejes X,Y,Z
-        			printf("MMA8451Q ->");
-        			printf("Accel_X:0x%X ",mma8451Q_datos.x_value);	//imprime aceleración X
-        			printf("Accel_Y:0x%X ",mma8451Q_datos.y_value);	//imprime aceleración Y
-        			printf("Accel_Z:0x%X ",mma8451Q_datos.z_value);	//imprime aceleración Z
-        			printf("\r\n");	//Imprime cambio de linea
-        		}
-        	}
-    	}
-#endif
-
-#if HABILITAR_SENSOR_BME280
-    	if(bme280_detectado==1){
-    		bme280_base_de_tiempo++;	//incrementa base de tiempo para tomar dato bme280
-    		if(bme280_base_de_tiempo>10){	//	>10 equivale aproximadamente a 2s
-    			bme280_base_de_tiempo=0; //reinicia contador de tiempo
-    			if(bme280ReadData(&bme280_datos)==kStatus_Success){	//toma lectura humedad, presion, temperatura
-        			printf("BME280 ->");
-    				printf("temperatura:0x%X ",bme280_datos.temperatura);	//imprime temperatura sin procesar
-        			printf("humedad:0x%X ",bme280_datos.humedad);	//imprime humedad sin procesar
-        			printf("presion:0x%X ",bme280_datos.presion);	//imprime presion sin procesar
-        			printf("\r\n");	//Imprime cambio de linea
-    			}
-    		}
-    	}
-#endif
-
 #if HABILITAR_SENSOR_SHT3X
     	if(sht3x_detectado==1){
     		sht3x_base_de_tiempo++; //incrementa base de tiempo para tomar dato sensor SHT3X
