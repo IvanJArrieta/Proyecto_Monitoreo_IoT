@@ -37,7 +37,6 @@
 #include "sdk_mdlw_leds.h"
 #include "sdk_pph_mma8451Q.h"
 #include "sdk_pph_ec25au.h"
-#include "sdk_pph_bme280.h"
 #include "sdk_pph_sht3x.h"
 /*******************************************************************************
  * Definitions
@@ -98,7 +97,7 @@ int main(void) {
 	uint8_t mma8451Q_detectado=0;
 	uint8_t mma8451Q_base_de_tiempo=0;
 
-	bme280_data_t bme280_datos;
+
 	uint8_t bme280_detectado=0;
 	uint8_t bme280_base_de_tiempo=0;
 
@@ -168,15 +167,6 @@ int main(void) {
     }
 #endif
 
-#if HABILITAR_SENSOR_BME280
-    printf("Detectando BME280:");
-    //LLamado a funcion que identifica sensor BME280
-    if (bme280WhoAmI() == kStatus_Success){
-    	printf("OK\r\n");
-    	(void)bme280Init();	//inicializa sensor bme280
-    	bme280_detectado=1;	//activa bandera que indica (SI HAY BME280)
-    }
-#endif
 
 #if HABILITAR_MODEM_EC25
     //Inicializa todas las funciones necesarias para trabajar con el modem EC25
