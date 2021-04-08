@@ -81,8 +81,6 @@ int main(void) {
 	uint8_t ec25_mensaje_de_texto[]="Hola desde EC25";
 	uint8_t ec25_estado_actual;
 
-
-
 	uint8_t sht3x_detectado=0;
 
 
@@ -134,8 +132,6 @@ int main(void) {
     printf("Inicializa modem EC25\r\n");
     ec25Inicializacion();
 
-    //Configura FSM de modem para enviar mensaje de texto
-    //printf("Enviando mensaje de texto por modem EC25\r\n");
     ec25EnviarMensajeDeTexto(&ec25_mensaje_de_texto[0], sizeof(ec25_mensaje_de_texto));
 #endif
 
@@ -149,7 +145,7 @@ int main(void) {
 	//Ciclo infinito encendiendo y apagando led verde
 	//inicia SUPERLOOP
     while(1) {
-    	waytTime(400);		//Espera 400ms para entrar a ejecutar maquina de estados
+    	waytTime(500);		//Espera 400ms para entrar a ejecutar maquina de estados
 
 
 #if HABILITAR_MODEM_EC25
