@@ -13,11 +13,12 @@
 #include "stdlib.h"
 #include "sdk_pph_ec25au.h"
 #include "sdk_mdlw_leds.h"
-
+#include "sdk_pph_sht3x.h"
 
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
+
 typedef struct _estado_fsm{
 	uint8_t anterior;
 	uint8_t actual;
@@ -38,7 +39,6 @@ void ec25BorrarBufferRX(void);
  * External vars
  ******************************************************************************/
 
-
 /*******************************************************************************
  * Local vars
  ******************************************************************************/
@@ -57,30 +57,41 @@ const char *ec25_comandos_at[] = {
 	"AT",			//comprueba disponibilidad de dispositivo
 	"ATI",			//consulta información del modem
 	"AT+CPIN?",		//consulta estado de la simcard
-	"AT+CREG?",		//consulta estado de la red celular y tecnología usada en red celular
-	"AT+CMGF=1",	//asigna modo texto para enviar mensajes
-	"AT+CMGS=\"3003564960\"",//envia mensaje de texto a numero definido
-	"Mensaje", 		//MENSAJE & CTRL+Z
-	"AT+CSQ",		//consulta calidad de la señal RSSI
+	"AT+QCFG=\"nwscanmode\",0,1",                           // configura las bandas
+	"AT+QCFG=\"band\",0, 800005A,0",                        //configuracion de bandas
+	"AT+CREG?",		                                        //consulta estado de la red celular y tecnología usada en red celular
+	"AT+CMGF=1",	                                        //asigna modo texto para enviar mensajes
+	"AT+CGDCONT=1,\"IP\",\"internet.comcel.com.co\"",     //configuracion de APN
+	"AT+QIACT=1",
+	"AT+QIACT?",
+	"AT+QMTOPEN=0,\"20.84.114.48\",1883",					// direccion ip del servidor
+	"AT+QMTCONN=0,\"guest\",\"guest\",\"guest\"",		// suscripcion a
+
 	};
+
 
 //Lista de respuestas a cada comando AT
 const char  *ec25_repuestas_at[]={
 		"OK",		//AT
 		"EC25",		//ATI
 		"READY",	//AT+CPIN?
+		"OK",		//AT+QCFG=\"nwscanmode\",0,1
+		"OK",		//AT+QCFG=\"band\",0, 800005A,0
 		"0,1",		//AT+CREG? = GSM,REGISTERED
 		"OK",		//AT+CMGF=1
-		">",		//AT+CMGS
-		"OK",		//MENSAJE & CTRL+Z
-		"+CSQ:"		//AT+CSQ
-};
+		"OK",		//AT+CGDCONT=1,\"IP\",\"internet.movistar.com.co\"
+		"OK",		//AT+QIACT=1
+		"1,1,1",	//AT+QIACT?
+		"QMTOPEN: 0,0",	  //AT+QMTOPEN=0,\"142.93.88.99\",1883
+		"QMTCONN: 0,0,0"  //AT+QMTCONN=0,\"amq.topic\",\"guest\",\"guest
+		};
 
 
 /*******************************************************************************
  * Private Source Code
  ******************************************************************************/
 //------------------------------------
+
 void ec25BorrarBufferRX(void){
 	uint8_t i;
 
@@ -115,11 +126,13 @@ void ec25EnviarComandoAT(uint8_t comando){
 	sprintf(comando_at,"%s\r\n", ec25_comandos_at[comando]);	//Prepara en buffercomandoa enviar al modem
 	uart0ImprimirMensaje((uint8_t *)(&comando_at[0]),strlen(comando_at));	//Envia comando AT indicado
 }
+
 //------------------------------------
 status_t ec25ProcesarRespuestaAT(uint8_t comando){
 	status_t resultado_procesamiento;	//variable que almacenará el resultado del procesamiento
 	uint8_t *puntero_ok=0;	//variable temporal que será usada para buscar respuesta
 
+//este switch verifica el estado anteriro luego de enviar un mesaje y guarda la repuesta en puntero_ok
 	switch(ec25_fsm.anterior){
 	case kFSM_ENVIANDO_AT:
 		//Busca palabra EC25 en buffer rx de quectel
@@ -160,10 +173,10 @@ status_t ec25ProcesarRespuestaAT(uint8_t comando){
 			resultado_procesamiento=kStatus_Fail;
 		}
 		break;
-	case kFSM_ENVIANDO_CREG:
-		//Busca palabra EC25 en buffer rx de quectel
-		puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
-				(char*) (ec25_repuestas_at[kAT_CREG])));
+	case kFSM_ENVIANDO_AT_QCFG_banda1:
+			//Busca palabra EC25 en buffer rx de quectel
+			puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
+					(char*) (ec25_repuestas_at[kAT_QCFG_banda1])));
 
 		if(puntero_ok!=0x00){
 			printf("OK\r\n");
@@ -173,9 +186,34 @@ status_t ec25ProcesarRespuestaAT(uint8_t comando){
 			resultado_procesamiento=kStatus_Fail;
 		}
 		break;
-	case kFSM_ENVIANDO_CMGF:
+	case kFSM_ENVIANDO_AT_QCFG_banda2:
+				//Busca palabra EC25 en buffer rx de quectel
+			puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
+					(char*) (ec25_repuestas_at[kAT_QCFG_banda2])));
+
+		if(puntero_ok!=0x00){
+			printf("OK\r\n");
+			resultado_procesamiento=kStatus_Success;
+		}else{
+			printf("ERROR\r\n");
+			resultado_procesamiento=kStatus_Fail;
+		}
+		break;
+	case kFSM_ENVIANDO_CREG :
 		//Busca palabra EC25 en buffer rx de quectel
-		puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
+		  puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
+				(char*) (ec25_repuestas_at[kAT_CREG])));
+		if(puntero_ok!=0x00){
+			printf("OK\r\n");
+			resultado_procesamiento=kStatus_Success;
+		}else{
+			printf("ERROR\r\n");
+			resultado_procesamiento=kStatus_Fail;
+		}
+		break;
+  case kFSM_ENVIANDO_CMGF:
+		//Busca palabra EC25 en buffer rx de quectel
+		   puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
 				(char*) (ec25_repuestas_at[kAT_CMGF_1])));
 
 		if(puntero_ok!=0x00){
@@ -187,10 +225,10 @@ status_t ec25ProcesarRespuestaAT(uint8_t comando){
 		}
 		break;
 
-	case kFSM_ENVIANDO_CMGS:
+	case kFSM_ENVIANDO_AT_APN:
 		//Busca palabra EC25 en buffer rx de quectel
 		puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
-				(char*) (ec25_repuestas_at[kAT_CMGS])));
+				(char*) (ec25_repuestas_at[kAT_APN])));
 
 		if(puntero_ok!=0x00){
 			printf("OK\r\n");
@@ -201,10 +239,10 @@ status_t ec25ProcesarRespuestaAT(uint8_t comando){
 		}
 		break;
 
-	case kFSM_ENVIANDO_MENSAJE_TXT:
+	case kFSM_ENVIANDO_ATQIACT_1:
 		//Busca palabra EC25 en buffer rx de quectel
 		puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
-				(char*) (ec25_repuestas_at[kAT_TEXT_MSG_END])));
+				(char*) (ec25_repuestas_at[kAT_QIACT_1])));
 
 		if(puntero_ok!=0x00){
 			printf("OK\r\n");
@@ -215,38 +253,45 @@ status_t ec25ProcesarRespuestaAT(uint8_t comando){
 		}
 		break;
 
-	case kFSM_ENVIANDO_CSQ:
+	case kFSM_ENVIANDO_AT_QIACT_2:
 		//Busca palabra EC25 en buffer rx de quectel
 		puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
-				(char*) (ec25_repuestas_at[kAT_CSQ])));
+				(char*) (ec25_repuestas_at[kAT_QIACT_2])));
+		if(puntero_ok!=0x00){
+			printf("OK\r\n");
+			resultado_procesamiento=kStatus_Success;
+		}else{
+			printf("ERROR\r\n");
+			resultado_procesamiento=kStatus_Fail;
+		}
+		break;
+	case kFSM_ENVIANDO_AT_CGDCONT_IP:
+		//Busca palabra EC25 en buffer rx de quectel
+		puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
+				(char*) (ec25_repuestas_at[kAT_CGDCONT_IP])));
 
 		if(puntero_ok!=0x00){
-			//la respuesta a AT+CSQ incluye dos parametros RSSI,BER
-			//el valor de interes para la aplicación es RSSI
-			char string_data[4];
-			int8_t rssi;	// received signal strength
-			uint8_t i;		//usada para borrar los daot s
-
-			//borra buffer que va a almacenar string
-			for(i=0;i<sizeof(string_data);i++){
-				string_data[i]=0;
-			}
-
-			memcpy(&string_data[0],puntero_ok+5, 3);	//copia los bytes que corresponden al RSSI (3 digitos)
-			rssi=(int8_t)atoi(&string_data[0]);	//convierte string a entero
-
-			if((rssi>EC25_RSSI_MINIMO_ACEPTADO)&&(rssi!=99)){
-				resultado_procesamiento=kStatus_Success;
-				printf("OK\r\n");
-			}else{
-				resultado_procesamiento=kStatus_OutOfRange;
-				printf("FUERA DE RANGO\r\n");
-			}
+			printf("OK\r\n");
+			resultado_procesamiento=kStatus_Success;
 		}else{
-			resultado_procesamiento=kStatus_Fail;
 			printf("ERROR\r\n");
+			resultado_procesamiento=kStatus_Fail;
 		}
-	break;
+		break;
+	case kFSM_ENVIANDO_AT_QMTCONN_topic:
+		//Busca palabra EC25 en buffer rx de quectel
+		puntero_ok = (uint8_t*) (strstr((char*) (&ec25_buffer_rx[0]),
+				(char*) (ec25_repuestas_at[kAT_QMTCONN_topic])));
+
+		if(puntero_ok!=0x00){
+			printf("OK\r\n");
+			resultado_procesamiento=kStatus_Success;
+		}else{
+			printf("ERROR\r\n");
+			resultado_procesamiento=kStatus_Fail;
+		}
+		break;
+
 
 	default:
 		//para evitar bloqueos, si se le especifica un comando incorrecto, genera error
@@ -275,16 +320,21 @@ status_t ec25EnviarMensajeDeTexto(uint8_t *mensaje, uint8_t size_mensaje ){
 	return(kStatus_Success);
 }
 //------------------------------------
+
+
+
 uint8_t ec25Polling(void){
 	status_t resultado;
 	uint8_t nuevo_byte_uart;
-
+	uint8_t *puntero_ok=0;	//variable temporal que será usada para buscar respuesta
 	switch (ec25_fsm.actual) {
 	case kFSM_INICIO:
 		//En este estado no hace nada y está a la espera de iniciar una nueva orden
 		break;
 
 	case kFSM_RESULTADO_ERROR:
+
+		//3ec25EnviarCFUN0();
 		//Se queda en este estado y solo se sale cuando se utilice la función ec25Inicializacion();
 		break;
 
@@ -294,6 +344,8 @@ uint8_t ec25Polling(void){
 
 	case kFSM_RESULTADO_ERROR_RSSI:
 		//Se queda en este estado y solo se sale cuando se utilice la función ec25Inicializacion();
+
+
 		break;
 
 	case kFSM_ENVIANDO_AT:
@@ -315,7 +367,7 @@ uint8_t ec25Polling(void){
 		break;
 
 	case kFSM_ENVIANDO_CPIN:
-		printf("Enviando CPIN:");
+		printf("Enviando CPIN?:");
 		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
 		ec25EnviarComandoAT(kAT_CPIN);	//Envia comando AT+CPIN?
 		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
@@ -323,17 +375,26 @@ uint8_t ec25Polling(void){
 		ec25_timeout = 0;	//reset a contador de tiempo
 		break;
 
-	case kFSM_ENVIANDO_CSQ:
-		printf("Enviando CSQ:");
+	case kFSM_ENVIANDO_AT_QCFG_banda1:
+		printf("Enviando AT+QCFG=\"nwscanmode\",0,1:");
 		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
-		ec25EnviarComandoAT(kAT_CSQ);	//Envia comando AT+CSQ
+		ec25EnviarComandoAT(kAT_QCFG_banda1);	//Envia comando AT+CSQ
+		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
+		ec25_fsm.actual = kFSM_ESPERANDO_RESPUESTA;	//avanza a esperar respuesta del modem
+		ec25_timeout = 0;	//reset a contador de tiempo
+		break;
+
+	case kFSM_ENVIANDO_AT_QCFG_banda2:
+		printf("Enviando AT+QCFG=\"band\",0, 800005A,0:");
+		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
+		ec25EnviarComandoAT(kAT_QCFG_banda2);	//Envia comando AT+CSQ
 		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
 		ec25_fsm.actual = kFSM_ESPERANDO_RESPUESTA;	//avanza a esperar respuesta del modem
 		ec25_timeout = 0;	//reset a contador de tiempo
 		break;
 
 	case kFSM_ENVIANDO_CREG:
-		printf("Enviando CREG:");
+		printf("Enviando AT+CREG:");
 		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
 		ec25EnviarComandoAT(kAT_CREG);	//Envia comando AT+CREG?
 		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
@@ -342,7 +403,7 @@ uint8_t ec25Polling(void){
 		break;
 
 	case kFSM_ENVIANDO_CMGF:
-		printf("Enviando CMGF:");
+		printf("Enviando AT+CEREG:");
 		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
 		ec25EnviarComandoAT(kAT_CMGF_1);	//Envia comando AT+CMGF=1
 		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
@@ -350,18 +411,46 @@ uint8_t ec25Polling(void){
 		ec25_timeout = 0;	//reset a contador de tiempo
 		break;
 
-	case kFSM_ENVIANDO_CMGS:
-		printf("Enviando CMGS:");
+	case kFSM_ENVIANDO_AT_APN:
+		printf("Enviando AT+CGDCONT=1,\"IP\",\"web.colombiamovil.com.co\":");
 		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
-		ec25EnviarComandoAT(kAT_CMGS);	//Envia comando AT+CMGS="3003564960"
+		ec25EnviarComandoAT(kAT_APN);	//Envia comando AT+CMGS="3003564960"
 		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
 		ec25_fsm.actual = kFSM_ESPERANDO_RESPUESTA;	//avanza a esperar respuesta del modem
 		ec25_timeout = 0;	//reset a contador de tiempo
 		break;
 
-	case kFSM_ENVIANDO_MENSAJE_TXT:
-		printf("Enviando TXT:");
-		printf("%s\r\n%c", ec25_buffer_tx,0x1A);	//Envia mensaje de texto incluido  CTRL+Z (0x1A)
+	case kFSM_ENVIANDO_ATQIACT_1:
+		printf("Enviando AT+QIACT=1:");
+		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
+		ec25EnviarComandoAT(kAT_QIACT_1);	//Envia comando AT+CSQ
+		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
+		ec25_fsm.actual = kFSM_ESPERANDO_RESPUESTA;	//avanza a esperar respuesta del modem
+		ec25_timeout = 0;	//reset a contador de tiempo
+		break;
+
+	case kFSM_ENVIANDO_AT_QIACT_2:
+		printf("Enviando AT+QIACT?:");
+		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
+		ec25EnviarComandoAT(kAT_QIACT_2);	//Envia comando AT+CSQ
+		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
+		ec25_fsm.actual = kFSM_ESPERANDO_RESPUESTA;	//avanza a esperar respuesta del modem
+		ec25_timeout = 0;	//reset a contador de tiempo
+		break;
+
+	case kFSM_ENVIANDO_AT_CGDCONT_IP:
+		printf("Enviando AT+QMTOPEN=0,\"20.84.105.98\",1883:");
+		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
+		ec25EnviarComandoAT(kAT_CGDCONT_IP);	//Envia comando AT+CSQ
+		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
+		ec25_fsm.actual = kFSM_ESPERANDO_RESPUESTA;	//avanza a esperar respuesta del modem
+		ec25_timeout = 0;	//reset a contador de tiempo
+		break;
+
+	case kFSM_ENVIANDO_AT_QMTCONN_topic:
+		printf("Enviando AT+QMTCONN=0,\"guest\"[,\"guest\",\"guest\"]:");
+		ec25BorrarBufferRX();	//limpia buffer para recibir datos de quectel
+		ec25EnviarComandoAT(kAT_QMTCONN_topic);	//Envia comando AT+CSQ
 		ec25_fsm.anterior = ec25_fsm.actual;		//almacena el estado actual
 		ec25_fsm.actual = kFSM_ESPERANDO_RESPUESTA;	//avanza a esperar respuesta del modem
 		ec25_timeout = 0;	//reset a contador de tiempo
@@ -412,33 +501,55 @@ uint8_t ec25Polling(void){
 
 			case kFSM_ENVIANDO_CPIN:
 				ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
+				ec25_fsm.actual = kFSM_ENVIANDO_AT_QCFG_banda1;//avanza a enviar nuevo comando al modem
+				break;
+
+			case kFSM_ENVIANDO_AT_QCFG_banda1:
+			    ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
+				ec25_fsm.actual = kFSM_ENVIANDO_AT_QCFG_banda2;//avanza a enviar nuevo comando al modem
+				break;
+
+			case kFSM_ENVIANDO_AT_QCFG_banda2:
+			    ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
 				ec25_fsm.actual = kFSM_ENVIANDO_CREG;//avanza a enviar nuevo comando al modem
 				break;
 
+
 			case kFSM_ENVIANDO_CREG:
 				ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
-				ec25_fsm.actual = kFSM_ENVIANDO_CSQ;//avanza a enviar nuevo comando al modem
-				break;
-
-			case kFSM_ENVIANDO_CSQ:
-				ec25_fsm.anterior = ec25_fsm.actual;//almacena el resultado actual
 				ec25_fsm.actual = kFSM_ENVIANDO_CMGF;//avanza a enviar nuevo comando al modem
 				break;
 
 			case kFSM_ENVIANDO_CMGF:
 				ec25_fsm.anterior = ec25_fsm.actual;//almacena el resultado actual
-				ec25_fsm.actual = kFSM_ENVIANDO_CMGS;//avanza a enviar nuevo comando al modem
+				ec25_fsm.actual = kFSM_ENVIANDO_AT_APN;//avanza a enviar nuevo comando al modem
 				break;
 
-			case kFSM_ENVIANDO_CMGS:
+			case kFSM_ENVIANDO_AT_APN:
 				ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
-				ec25_fsm.actual = kFSM_ENVIANDO_MENSAJE_TXT;//avanza a enviar nuevo comando al modem
+				ec25_fsm.actual = kFSM_ENVIANDO_ATQIACT_1;//avanza a enviar nuevo comando al modem
 				break;
 
-			case kFSM_ENVIANDO_MENSAJE_TXT:
+			case kFSM_ENVIANDO_ATQIACT_1:
+				ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
+				ec25_fsm.actual = kFSM_ENVIANDO_AT_QIACT_2;//avanza a enviar nuevo comando al modem
+				break;
+
+			case kFSM_ENVIANDO_AT_QIACT_2:
+				ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
+				ec25_fsm.actual = kFSM_ENVIANDO_AT_CGDCONT_IP;//avanza a enviar nuevo comando al modem
+				break;
+
+			case kFSM_ENVIANDO_AT_CGDCONT_IP:
+				ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
+				ec25_fsm.actual = kFSM_ENVIANDO_AT_QMTCONN_topic;//avanza a enviar nuevo comando al modem
+				break;
+
+			case kFSM_ENVIANDO_AT_QMTCONN_topic:
 				ec25_fsm.anterior = ec25_fsm.actual;//almacena el estado actual
 				ec25_fsm.actual = kFSM_RESULTADO_EXITOSO;//avanza a enviar nuevo comando al modem
 				break;
+
 
 			default:
 				//para evitar bloqueos, marca error de proceso en caso de detectar un estado ilegal
