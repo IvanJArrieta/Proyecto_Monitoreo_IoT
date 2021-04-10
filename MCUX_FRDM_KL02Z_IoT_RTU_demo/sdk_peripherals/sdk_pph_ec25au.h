@@ -84,7 +84,6 @@ status_t enviarMQTT_ValueSHT3x(void);
 status_t ec25Inicializacion(void);
 status_t ec25EnviarMensajeDeTexto(uint8_t *mensaje, uint8_t size_mensaje );
 uint8_t ec25Polling(void);
-status_t ec25EnviarCFUN0(void);
 /** @} */ // end of X group
 /** @} */ // end of X group
 

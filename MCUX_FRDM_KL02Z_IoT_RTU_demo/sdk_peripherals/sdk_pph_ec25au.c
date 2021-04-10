@@ -321,13 +321,6 @@ status_t ec25EnviarMensajeDeTexto(uint8_t *mensaje, uint8_t size_mensaje ){
 }
 //------------------------------------
 
-status_t ec25EnviarCFUN0(void){
-	ec25_timeout=0;	//borra contador de tiempo
-	ec25BorrarBufferTX();	//borrar buffer de transmisión
-	ec25BorrarBufferRX();	//borra buffer de recepción
-	ec25_fsm.actual=kFSM_ENVIANDO_CFUN_0;
-	return(kStatus_Success);
-}
 
 
 uint8_t ec25Polling(void){
@@ -352,7 +345,7 @@ uint8_t ec25Polling(void){
 	case kFSM_RESULTADO_ERROR_RSSI:
 		//Se queda en este estado y solo se sale cuando se utilice la función ec25Inicializacion();
 
-		ec25EnviarCFUN0();
+
 		break;
 
 	case kFSM_ENVIANDO_AT:
