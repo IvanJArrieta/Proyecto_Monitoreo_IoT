@@ -36,7 +36,19 @@ class analitica():
         
         self.analitica_descriptiva()
         self.analitica_predictiva()
+        self.alertas(float(msj_vetor[1]),float(msj_vetor[3]))
         self.guardar()
+
+    def alertas(self, temperatura, humedad):
+        if temperatura > 36:
+            self.publicar("aler-temp", "*ALERTA* Los valores de Temp superan los normales")
+        else:
+            self.publicar("aler-temp", "El valor de temperatura es normal") 
+        
+        if humedad > 65:
+            self.publicar("aler-hum", "*ALERTA* El porcentaje de Hum esta fuera del rango")
+        else:
+            self.publicar("aler-hum", "El porcentaje de humedad es normal")
 
     def print_data(self):
         print(self.df)
@@ -84,6 +96,7 @@ class analitica():
             time_format = datetime.utcfromtimestamp(tiempo)
             date_time = time_format.strftime('%d.%m.%Y %H:%M:%S')
             self.publicar("prediccion-{}".format(sensor), "{},{:.2f}".format(date_time,prediccion[0]))
+            self.publicar("pred-data-{}".format(sensor), "{:.2f}".format(prediccion[0]))
     @staticmethod
     def publicar(cola, mensaje):
         connexion = pika.BlockingConnection(pika.ConnectionParameters(host='rabbit'))
