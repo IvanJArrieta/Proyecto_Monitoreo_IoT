@@ -6,10 +6,6 @@
  * @details
  *			v0.1 dato recibido por puerto COM es contestado en forma de ECO
  *			v0.2 dato recibido por puerto COM realiza operaciones especiales
- *					A/a=invierte estado de LED conectado en PTB10
- *					v=apaga LED conectado en PTB7
- *					V=enciende LED conectado en PTB7
- *					r=apaga LED conectado en PTB6
  *			v0.3 nuevo comando por puerto serial para prueba de MMA8451Q
  *					M=detecta acelerometro MM8451Q en bus I2C0
  *
